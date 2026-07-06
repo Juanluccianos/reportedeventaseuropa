@@ -1,0 +1,71 @@
+name: Reporte de Ventas Diario
+
+# DISPARADORES (3 formas de arrancar, en orden de prioridad):
+#   1. repository_dispatch -> lo dispara cron-job.org por API a las 7:30 AR (puntual).
+#   2. schedule (cron nativo) -> RED DE RESPALDO. Dispara 8:00 AR por si cron-job.org
+#      falla o tiene downtime. Como report.py tiene anti doble-conteo, si el reporte
+#      ya se mando a las 7:30, este corre, ve que la fecha ya se proceso y NO reenvia.
+#   3. workflow_dispatch -> boton manual para probar cuando quieras.
+on:
+  repository_dispatch:
+    types: [reporte-diario]
+  schedule:
+    # 11:00 UTC = 8:00 AR (UTC-3). Respaldo, media hora despues del disparo real.
+    - cron: "0 11 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+concurrency:
+  group: reporte-ventas
+  cancel-in-progress: false
+
+jobs:
+  enviar-reporte:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias
+        run: pip install openpyxl matplotlib
+
+      - name: Bajar reporte de TouchBistro (mail -> Ventas_ayer.xlsx)
+        env:
+          IMAP_USER: ${{ secrets.IMAP_USER }}
+          IMAP_APP_PASS: ${{ secrets.IMAP_APP_PASS }}
+        run: python fetch_touchbistro.py
+
+      - name: Armar Acumulado 2025 desde el master
+        run: python generar_acum2025.py
+
+      - name: Generar reporte (y actualizar acumulado)
+        id: gen
+        run: python report.py
+
+      - name: Enviar mail
+        if: steps.gen.outputs.send == 'true'
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASS: ${{ secrets.GMAIL_APP_PASS }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+        run: python send_mail.py "${{ steps.gen.outputs.subject }}" preview.html
+
+      - name: Commitear resultados
+        if: steps.gen.outputs.send == 'true'
+        run: |
+          git config user.name "luccianos-bot"
+          git config user.email "bot@luccianos.local"
+          git add data/acumulado.json charts/ Ventas_ayer.xlsx Acumulado_interanual.xlsx
+          if git diff --cached --quiet; then
+            echo "Sin cambios para commitear."
+          else
+            git commit -m "Reporte del ${{ steps.gen.outputs.date }} [skip ci]"
+            git push
+          fi
