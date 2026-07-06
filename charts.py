@@ -13,8 +13,8 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 
 # Paleta corporativa: azul marino (en curso) + celeste (anio anterior)
-AZUL = "#1f3a6e"        # azul marino - 2026
-CELESTE = "#7fb3e0"     # celeste - 2025
+AZUL = "#6B1F2A"        # azul marino - 2026
+CELESTE = "#d9a5ac"     # celeste - 2025
 GRIS_TXT = "#8a8a8a"
 VERDE = "#1a7d2e"
 ROJO = "#c62828"
@@ -24,8 +24,8 @@ DPI = 200  # alta resolucion para que no se vea pixelado
 
 def _money_k(x, _):
     if x >= 1000:
-        return f"${x/1000:.0f}k"
-    return f"${x:.0f}"
+        return f"€{x/1000:.0f}k"
+    return f"€{x:.0f}"
 
 
 def chart_comparativo(rows, a26_lbl, a25_lbl, out_path):
@@ -71,9 +71,9 @@ def chart_progreso(a26, a25, pct, out_path):
     ax.set_ylim(-0.6, 0.6)
     ax.axis("off")
 
-    ax.text(a26, 0, f"  ${a26:,.0f}", va="center", ha="left", fontsize=12,
+    ax.text(a26, 0, f"  €{a26:,.0f}", va="center", ha="left", fontsize=12,
             fontweight="bold", color="#111111", zorder=5)
-    ax.text(a25, 0.42, f"Año ant. ${a25:,.0f}", va="bottom", ha="center",
+    ax.text(a25, 0.42, f"Año ant. €{a25:,.0f}", va="bottom", ha="center",
             fontsize=8, color=GRIS_TXT)
 
     fig.tight_layout(pad=0.3)

@@ -1,0 +1,5 @@
+preview.html
+data/ventas_dia.json
+data/acum_interanual.json
+__pycache__/
+*.pyc

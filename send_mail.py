@@ -53,7 +53,7 @@ def send(subject, html, to=None):
 
     root = MIMEMultipart("related")
     root["Subject"] = subject
-    root["From"] = f"Lucciano's USA <{user}>"
+    root["From"] = f"Lucciano's Europa <{user}>"
     root["To"] = to_addr
     if cc_addrs:
         root["Cc"] = ", ".join(cc_addrs)
