@@ -1,24 +1,23 @@
-name: Reporte de Ventas Diario
+name: Reporte de Ventas Diario - Europa
 
-# DISPARADORES (3 formas de arrancar, en orden de prioridad):
-#   1. repository_dispatch -> lo dispara cron-job.org por API a las 7:30 AR (puntual).
-#   2. schedule (cron nativo) -> RED DE RESPALDO. Dispara 8:00 AR por si cron-job.org
-#      falla o tiene downtime. Como report.py tiene anti doble-conteo, si el reporte
-#      ya se mando a las 7:30, este corre, ve que la fecha ya se proceso y NO reenvia.
-#   3. workflow_dispatch -> boton manual para probar cuando quieras.
+# DISPARADORES:
+#   1. repository_dispatch -> lo dispara un cron externo (cron-job.org) a las 7:00 AR.
+#   2. schedule (cron nativo) -> RED DE RESPALDO a las 7:30 AR. Como report.py tiene
+#      anti doble-conteo, si ya se mandó, este ve la fecha procesada y NO reenvía.
+#   3. workflow_dispatch -> botón manual.
 on:
   repository_dispatch:
     types: [reporte-diario]
   schedule:
-    # 11:00 UTC = 8:00 AR (UTC-3). Respaldo, media hora despues del disparo real.
-    - cron: "0 11 * * *"
+    # 10:30 UTC = 7:30 AR (UTC-3). Respaldo, media hora después del disparo externo (7:00).
+    - cron: "30 10 * * *"
   workflow_dispatch: {}
 
 permissions:
   contents: write
 
 concurrency:
-  group: reporte-ventas
+  group: reporte-ventas-europa
   cancel-in-progress: false
 
 jobs:
@@ -36,13 +35,13 @@ jobs:
       - name: Instalar dependencias
         run: pip install openpyxl matplotlib
 
-      - name: Bajar reporte de TouchBistro (mail -> Ventas_ayer.xlsx)
+      - name: Bajar reportes de Shares (mails -> data/ventas_dia.json)
         env:
           IMAP_USER: ${{ secrets.IMAP_USER }}
           IMAP_APP_PASS: ${{ secrets.IMAP_APP_PASS }}
-        run: python fetch_touchbistro.py
+        run: python fetch_shares.py
 
-      - name: Armar Acumulado 2025 desde el master
+      - name: Armar acumulado 2025 desde el master
         run: python generar_acum2025.py
 
       - name: Generar reporte (y actualizar acumulado)
@@ -62,7 +61,7 @@ jobs:
         run: |
           git config user.name "luccianos-bot"
           git config user.email "bot@luccianos.local"
-          git add data/acumulado.json charts/ Ventas_ayer.xlsx Acumulado_interanual.xlsx
+          git add data/acumulado.json data/ventas_dia.json data/acum_interanual.json charts/
           if git diff --cached --quiet; then
             echo "Sin cambios para commitear."
           else
